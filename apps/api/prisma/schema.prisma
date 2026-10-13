@@ -1,0 +1,91 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
+  importFileExtension = ""
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// One launched coin. Addresses are stored checksummed. Amounts are raw uint256 values (wei or
+/// token base units) and must never be converted to JavaScript numbers.
+model Coin {
+  address             String   @id
+  curveAddress        String   @unique
+  creator             String
+  name                String
+  symbol              String
+  targetRaise         Decimal  @db.Decimal(78, 0)
+  initialVirtualEth   Decimal  @db.Decimal(78, 0)
+  platformFeeBps      Int
+  creatorFeeBps       Int
+  antiSnipeFeeBps     Int
+  antiSnipeDuration   Int
+  virtualEthReserve   Decimal  @db.Decimal(78, 0)
+  virtualTokenReserve Decimal  @db.Decimal(78, 0)
+  completed           Boolean  @default(false)
+  completedBlock      BigInt?
+  /// Set once the coin's liquidity has moved into its Uniswap v4 pool.
+  graduated           Boolean  @default(false)
+  graduatedBlock      BigInt?
+  poolId              String?
+  poolEth             Decimal? @db.Decimal(78, 0)
+  poolTokens          Decimal? @db.Decimal(78, 0)
+  createdBlock        BigInt
+  createdTxHash       String
+  createdAt           DateTime
+  trades              Trade[]
+
+  @@index([createdBlock])
+  @@index([creator])
+}
+
+enum TradeSide {
+  BUY
+  SELL
+}
+
+/// One Buy or Sell event. `ethAmount` is ETH spent for buys and ETH received for sells; reserves
+/// are the curve's values right after the trade.
+model Trade {
+  id                  BigInt    @id @default(autoincrement())
+  coinAddress         String
+  coin                Coin      @relation(fields: [coinAddress], references: [address], onDelete: Cascade)
+  side                TradeSide
+  trader              String
+  ethAmount           Decimal   @db.Decimal(78, 0)
+  tokenAmount         Decimal   @db.Decimal(78, 0)
+  platformFee         Decimal   @db.Decimal(78, 0)
+  creatorFee          Decimal   @db.Decimal(78, 0)
+  virtualEthReserve   Decimal   @db.Decimal(78, 0)
+  virtualTokenReserve Decimal   @db.Decimal(78, 0)
+  blockNumber         BigInt
+  blockHash           String
+  txHash              String
+  logIndex            Int
+  timestamp           DateTime
+
+  @@unique([txHash, logIndex])
+  @@index([coinAddress, blockNumber, logIndex])
+  @@index([blockNumber])
+}
+
+/// Indexer progress per chain and factory.
+model IndexerState {
+  id            String   @id
+  lastBlock     BigInt
+  lastBlockHash String
+  updatedAt     DateTime @updatedAt
+}
+
+/// Hashes of recently processed blocks, used to detect reorgs and find the last block both the
+/// chain and the database agree on.
+model IndexerCheckpoint {
+  indexerId   String
+  blockNumber BigInt
+  blockHash   String
+
+  @@id([indexerId, blockNumber])
+}

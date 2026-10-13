@@ -1,0 +1,15 @@
+{
+  "name": "token-launcher",
+  "private": true,
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "api": "pnpm --filter @token-launcher/api",
+    "shared": "pnpm --filter @token-launcher/shared",
+    "contracts:build": "cd contracts && forge build",
+    "contracts:test": "cd contracts && forge test"
+  }
+}
